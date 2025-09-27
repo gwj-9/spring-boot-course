@@ -8,8 +8,21 @@ team:
   createDate: "2019-07-01"
 
 
+#spring:
+#  servlet:
+#    multipart:
+#      max-file-size: 10MB     # 单个上传⽂件⼤⼩限定为10M，默认值为1M
+#      max-request-size: 100MB # 单次上传⽂件⼤⼩限定为100M，默认值为10M
+
+custom:
+  qrcode:
+    content: "http://www.baidu.com"
+
 spring:
-  servlet:
-    multipart:
-      max-file-size: 10MB     # 单个上传⽂件⼤⼩限定为10M，默认值为1M
-      max-request-size: 100MB # 单次上传⽂件⼤⼩限定为100M，默认值为10M
+  mail:
+    host: smtp.qq.com  # 邮件服务器地址，QQ邮箱的SMTP服务器固定写法
+    username: 2475361850@qq.com  # 发件人邮箱地址
+    password: ghmoszskwxgxeacf  # 客户端授权码
+    properties.mail.smtp.ssl.enable: true  # 是否启用SSL加密，465端口必须tr
+
+
