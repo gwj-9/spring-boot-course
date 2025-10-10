@@ -13,6 +13,7 @@ public class Result<T> {
         Result<T> result = new Result<>();
         result.code = 200;
         result.message = "success";
+        result.data = data;
         return result;
     }
 
@@ -20,7 +21,13 @@ public class Result<T> {
         this.data = data;
         return this;
     }
+
+    public static <T> Result<T> error(String message) {
+        Result<T> result = new Result<>();
+        result.code = 400; // 假设错误码是 400
+        result.message = message;
+        return result;
+    }
+
+
 }
-//public static <T> Result<T> ok(T data) {
-//    return new Result<>(200, "操作成功", data);
-//}

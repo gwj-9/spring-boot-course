@@ -9,11 +9,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-
-
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+/**
+ 限流过滤器
+ */
 @Slf4j
 @Component
 public class RateLimitFilter implements Filter {
@@ -26,8 +27,6 @@ public class RateLimitFilter implements Filter {
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
         log.info("RateLimitFilter 初始化");
-        //SpringBeanAutowiringSupport.processInjectionBasedOnServletContext(this,
-        //        filterConfig.getServletContext());
     }
 
     @Override
@@ -50,7 +49,7 @@ public class RateLimitFilter implements Filter {
 
         if (count >= LIMIT_COUNT) {
             httpResponse.setStatus(429);
-            httpResponse.getWriter().write("{\"code\":429,\"msg\":\"请求过于频繁,请1分钟后再试\"}");
+            httpResponse.getWriter().write("{\"code\":429,\"msg\":\"请求过于频繁，请1分钟后再试\"}");
             return;
         }
 
