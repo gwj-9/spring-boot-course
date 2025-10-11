@@ -1,7 +1,5 @@
 package top.gwj.service;
 
-
-
 import com.alibaba.fastjson2.JSONObject;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +47,7 @@ public class DailyWeatherService {
     /**
      * 定时任务，每天7:20执行
      */
-    @Scheduled(cron = "0 20 7 * * ?")
+    @Scheduled(cron = "0 01 14 * * ?")
     public void sendDailyWeather() {
         try {
             // 1. 调用和风天气API获取天气预报

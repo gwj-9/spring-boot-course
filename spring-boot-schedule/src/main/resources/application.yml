@@ -1,23 +1,77 @@
-# 1. 邮件发送配置（以QQ邮箱为例，需开启SMTP服务并获取授权码）
+# 1. 邮件服务配置（QQ邮箱，需开启SMTP并获取授权码）
 spring:
   mail:
     host: smtp.qq.com
     port: 587
-    username: 2475361850@qq.com  # 发送方邮箱
-    password: xljyetzragpdeced # QQ邮箱SMTP授权码（不是登录密码）
+    username: 2475361850@qq.com  # 发送方邮箱账号
+    password: bwokxyujnngfebaj   # QQ邮箱SMTP授权码（非登录密码）
     properties:
       mail:
         smtp:
-          auth: true
+          auth: true             # 启用SMTP认证
           starttls:
-            enable: true
-            required: true
-# 2. 天气API配置（使用「和风天气」免费API，需自行注册获取key）
+            enable: true         # 启用TLS加密（QQ邮箱必需）
+            required: true       # 强制要求TLS
+
+  # 2. 数据库配置（主业务+Quartz任务存储共用）
+  datasource:
+    url: jdbc:mysql://localhost:3306/my_mp?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root               # 数据库用户名
+    password: root               # 数据库密码
+    driver-class-name: com.mysql.cj.jdbc.Driver  # MySQL 8.x驱动类
+
+  # 3. Quartz定时任务配置（任务信息持久化到数据库）
+  quartz:
+    job-store-type: jdbc         # 持久化方式：jdbc（数据库），memory（内存，重启丢失）
+    jdbc:
+      initialize-schema: always  # 表结构初始化：always=每次创建，embedded=仅内存模式，never=不创建
+    properties:
+      org:
+        quartz:
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool  # 线程池实现类
+            threadCount: 10      # 核心线程数（根据任务数量调整）
+            threadNamePrefix: quartz-thread  # 线程名称前缀（便于日志排查）
+            threadPriority: 5    # 线程优先级（1-10，默认5）
+
+# 4. 天气API配置（和风天气免费API）
 weather:
   api:
-    key: 588beb557b5344cd997afcd0618debb6  # 和风天气API密钥，前面已申请并复制
-    city: 101190101					  # 南京的城市ID（可查和风天气城市列表）
-    url:  https://n85egkmwk2.re.qweatherapi.com
-# 3. 接收邮件列表
+    key: 588beb557b5344cd997afcd0618debb6  # 和风天气API密钥（需自行注册获取）
+    city: 101190101                       # 城市ID（南京），可参考和风天气城市列表
+    url: https://n85egkmwk2.re.qweatherapi.com/v7/weather/3d  # 3天天气查询接口
+
+# 5. 邮件接收人配置
 email:
-  recipients: 2475361850@qq.com  # 多个收件人用逗号分隔
+  recipients: 2475361850@qq.com  # 收件人列表，多个用英文逗号分隔（例：a@qq.com,b@qq.com）
+
+# 6. 数据库备份配置
+db:
+  backup:
+    host: localhost              # 数据库地址（与主数据库一致）
+    port: 3306                   # 数据库端口（与主数据库一致）
+    username: root               # 备份用数据库用户名
+    password: root               # 备份用数据库密码
+    db-name: my_mp_test          # 需要备份的数据库名
+    local-path: ./db-backup/     # 本地备份文件存储路径（需确保目录存在）
+
+# 7. 服务健康检查阈值配置
+server:
+  monitor:
+    cpu-threshold: 80.0          # CPU使用率阈值（%），超阈值触发告警
+    memory-threshold: 50.0       # 内存使用率阈值（%），根据服务器配置调整
+
+# 8. 日志与MyBatis-Plus配置
+logging:
+  level:
+    com.baomidou.mybatisplus.samples: debug  # MP示例代码包日志级别（调试用）
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true       # 开启下划线-驼峰属性映射（例：user_name→userName）
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 控制台打印SQL（调试用，生产建议关闭）
+  global-config:
+    db-config:
+      logic-delete-field: deleted            # 全局逻辑删除字段名
+      logic-delete-value: 1                  # 逻辑已删除值（数据库存储）
+      logic-not-delete-value: 0              # 逻辑未删除值（数据库存储）

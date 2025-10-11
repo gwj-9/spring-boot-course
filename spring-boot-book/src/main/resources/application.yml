@@ -4,6 +4,18 @@ spring:
     url: jdbc:mysql://localhost:3306/test_db?useSSL=false&serverTimezone=Asia/Shanghai
     username: root
     password: root
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: 2475361850@qq.com
+    password: ghmoszskwxgxeacf
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
 mybatis-plus:
   mapper-locations: classpath:/mapper/**/*.xml
   type-aliases-package: com.example.demo.entity

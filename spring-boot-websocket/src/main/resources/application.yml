@@ -1,0 +1,5 @@
+logging:
+  level:
+    org.springframework.web.socket.handler: DEBUG
+    # 或更细粒度：
+    org.springframework.web.socket.server.support.WebSocketHandlerMapping: DEBUG
