@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>设备监控 - WebSocket 实时推送</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .connect-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .disconnect-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .clear-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .gauge-container {
+            height: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .gauge {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .gauge.cpu {
+            background-color: #28a745;
+        }
+
+        .gauge.memory {
+            background-color: #007bff;
+        }
+
+        .gauge.warning {
+            background-color: #ffc107;
+        }
+
+        .gauge.danger {
+            background-color: #dc3545;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .history {
+            margin-top: 30px;
+        }
+
+        .history-title {
+            margin-bottom: 15px;
+        }
+
+        .messages {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 3px;
+            background: white;
+            border-left: 3px solid #17a2b8;
+        }
+
+        .message-time {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .message-content {
+            margin-top: 5px;
+            font-family: monospace;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #17a2b8;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📊 设备监控中心</h1>
+        <p>实时监控设备CPU和内存占用率</p>
+    </div>
+
+    <div class="status disconnected" id="status">
+        🔴 未连接到监控服务
+    </div>
+
+    <div class="stats">
+        <div class="stat-item">
+            <div class="stat-value" id="messageCount">0</div>
+            <div class="stat-label">数据更新次数</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="connectionTime">0s</div>
+            <div class="stat-label">监控时长</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="lastUpdate">--</div>
+            <div class="stat-label">最后更新时间</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="connect-btn" id="connectBtn">连接监控服务</button>
+        <button class="disconnect-btn" disabled id="disconnectBtn">断开连接</button>
+        <button class="clear-btn" id="clearBtn">清空历史记录</button>
+    </div>
+
+    <div class="metrics">
+        <div class="metric-card">
+            <div class="metric-title">CPU 占用率</div>
+            <div class="gauge-container">
+                <div class="gauge cpu" id="cpuGauge" style="width: 0%"></div>
+            </div>
+            <div class="metric-value" id="cpuValue">0%</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-title">内存占用率</div>
+            <div class="gauge-container">
+                <div class="gauge memory" id="memoryGauge" style="width: 0%"></div>
+            </div>
+            <div class="metric-value" id="memoryValue">0%</div>
+        </div>
+    </div>
+
+    <div class="history">
+        <h3 class="history-title">历史监控数据：</h3>
+        <div class="messages" id="messages"></div>
+    </div>
+</div>
+
+<script>
+    let websocket = null;
+    let messageCount = 0;
+    let connectionStartTime = null;
+    let connectionTimer = null;
+
+    // DOM元素
+    const status = document.getElementById('status');
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const messages = document.getElementById('messages');
+    const messageCountEl = document.getElementById('messageCount');
+    const connectionTimeEl = document.getElementById('connectionTime');
+    const lastUpdateEl = document.getElementById('lastUpdate');
+    const cpuGauge = document.getElementById('cpuGauge');
+    const cpuValue = document.getElementById('cpuValue');
+    const memoryGauge = document.getElementById('memoryGauge');
+    const memoryValue = document.getElementById('memoryValue');
+
+    // 更新连接状态
+    function updateStatus(connected) {
+        if (connected) {
+            status.className = 'status connected';
+            status.innerHTML = '🟢 已连接到设备监控服务';
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+        } else {
+            status.className = 'status disconnected';
+            status.innerHTML = '🔴 未连接到监控服务';
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+        }
+    }
+
+    // 更新统计信息
+    function updateStats() {
+        messageCountEl.textContent = messageCount;
+
+        if (connectionStartTime) {
+            const duration = Math.floor((Date.now() - connectionStartTime) / 1000);
+            connectionTimeEl.textContent = duration + 's';
+        }
+    }
+
+    // 更新指标显示
+    function updateMetrics(cpu, memory) {
+        // 更新CPU指标
+        cpuGauge.style.width = cpu + '%';
+        cpuValue.textContent = cpu + '%';
+
+        // 根据CPU使用率设置颜色警告
+        cpuGauge.className = 'gauge cpu';
+        if (cpu > 80) {
+            cpuGauge.classList.add('danger');
+        } else if (cpu > 50) {
+            cpuGauge.classList.add('warning');
+        }
+
+        // 更新内存指标
+        memoryGauge.style.width = memory + '%';
+        memoryValue.textContent = memory + '%';
+
+        // 根据内存使用率设置颜色警告
+        memoryGauge.className = 'gauge memory';
+        if (memory > 80) {
+            memoryGauge.classList.add('danger');
+        } else if (memory > 50) {
+            memoryGauge.classList.add('warning');
+        }
+    }
+
+    // 添加历史消息
+    function addHistoryMessage(cpu, memory) {
+        messageCount++;
+
+        const message = document.createElement('div');
+        message.className = 'message';
+
+        const time = new Date().toLocaleTimeString();
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'message-time';
+        timeDiv.textContent = '[' + time + ']';
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.textContent = `CPU: ${cpu}% | 内存: ${memory}%`;
+
+        message.appendChild(timeDiv);
+        message.appendChild(contentDiv);
+
+        messages.appendChild(message);
+        messages.scrollTop = messages.scrollHeight;
+
+        // 更新最后更新时间
+        lastUpdateEl.textContent = time;
+
+        updateStats();
+    }
+
+    // 开始连接计时器
+    function startConnectionTimer() {
+        connectionStartTime = Date.now();
+        connectionTimer = setInterval(updateStats, 1000);
+    }
+
+    // 停止连接计时器
+    function stopConnectionTimer() {
+        if (connectionTimer) {
+            clearInterval(connectionTimer);
+            connectionTimer = null;
+        }
+        connectionStartTime = null;
+        connectionTimeEl.textContent = '0s';
+    }
+
+    // 连接WebSocket
+    function connectWebSocket() {
+        try {
+            addHistoryMessage(0, 0, '正在连接到设备监控服务...');
+            // 连接到设备监控的WebSocket端点
+            websocket = new WebSocket('ws://localhost:8080/ws/device');
+
+            websocket.onopen = function (event) {
+                addHistoryMessage(0, 0, '设备监控服务连接成功！将定期接收CPU和内存数据');
+                updateStatus(true);
+                startConnectionTimer();
+            };
+
+            websocket.onmessage = function (event) {
+                try {
+                    // 解析收到的JSON数据
+                    const data = JSON.parse(event.data);
+                    if (data.cpu !== undefined && data.memory !== undefined) {
+                        updateMetrics(data.cpu, data.memory);
+                        addHistoryMessage(data.cpu, data.memory);
+                    }
+                } catch (e) {
+                    // 如果不是JSON格式，直接显示文本
+                    addHistoryMessage(0, 0, '收到消息: ' + event.data);
+                }
+            };
+
+            websocket.onclose = function (event) {
+                addHistoryMessage(0, 0, `监控连接关闭，代码: ${event.code}, 原因: ${event.reason}`);
+                updateStatus(false);
+                stopConnectionTimer();
+            };
+
+            websocket.onerror = function (error) {
+                addHistoryMessage(0, 0, '监控服务错误: ' + error);
+                updateStatus(false);
+                stopConnectionTimer();
+            };
+        } catch (error) {
+            addHistoryMessage(0, 0, '连接失败: ' + error.message);
+            updateStatus(false);
+        }
+    }
+
+    // 断开WebSocket连接
+    function disconnectWebSocket() {
+        if (websocket) {
+            websocket.close();
+            websocket = null;
+        }
+    }
+
+    // 清空历史记录
+    function clearHistory() {
+        messages.innerHTML = '';
+        messageCount = 0;
+        updateStats();
+        lastUpdateEl.textContent = '--';
+        addHistoryMessage(0, 0, '历史记录已清空');
+    }
+
+    // 为了兼容信息和数据两种情况，重载addHistoryMessage
+    function addHistoryMessage(cpu, memory, text) {
+        if (text) {
+            messageCount++;
+
+            const message = document.createElement('div');
+            message.className = 'message';
+
+            const time = new Date().toLocaleTimeString();
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'message-time';
+            timeDiv.textContent = '[' + time + ']';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = text;
+
+            message.appendChild(timeDiv);
+            message.appendChild(contentDiv);
+
+            messages.appendChild(message);
+            messages.scrollTop = messages.scrollHeight;
+
+            lastUpdateEl.textContent = time;
+            updateStats();
+        } else {
+            addHistoryMessage(cpu, memory);
+        }
+    }
+
+    // 绑定按钮事件
+    connectBtn.addEventListener('click', connectWebSocket);
+    disconnectBtn.addEventListener('click', disconnectWebSocket);
+    clearBtn.addEventListener('click', clearHistory);
+
+    // 页面加载完成
+    window.addEventListener('load', function () {
+        addHistoryMessage(0, 0, '页面加载完成，准备监控设备状态');
+        updateStats();
+    });
+</script>
+</body>
+</html>

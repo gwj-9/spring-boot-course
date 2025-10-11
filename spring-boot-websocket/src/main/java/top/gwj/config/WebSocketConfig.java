@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
+import top.gwj.handler.DeviceMonitorWebSocketHandler;
 import top.gwj.handler.SimpleTimeWebSocketHandler;
 import top.gwj.handler.TestWebSocketHandler;
 
@@ -19,4 +20,10 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
         // 时间推送的 WebSocket 端点
         registry.addHandler(new SimpleTimeWebSocketHandler(), "/ws/time").setAllowedOrigins("*");
+
+        // 在WebSocketConfig的registerWebSocketHandlers方法中添加
+        registry.addHandler(new DeviceMonitorWebSocketHandler(), "/ws/device")
+                .setAllowedOrigins("*");
+
+
     }}
